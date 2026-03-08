@@ -28,8 +28,9 @@ public class Galaxia {
     private boolean rodando;
     private ExecutorService threadPool;
     private final AtomicInteger contadorNaves = new AtomicInteger(0);
+    private final CamelMonitoramento camel;
 
-    public Galaxia() {
+    public Galaxia(CamelMonitoramento camel) {
         this.naves = new ConcurrentHashMap<>();
         this.bases = new ConcurrentHashMap<>();
         this.portasBases = new ConcurrentHashMap<>();
@@ -38,6 +39,7 @@ public class Galaxia {
         this.threadPool = Executors.newCachedThreadPool();
         this.relogioLamport = new RelogioLamport();
         this.relogioVetorial = new RelogioVetorial("SERVIDOR_GALAXIA");
+        this.camel = camel;
 
         inicializarBases();
 
@@ -241,13 +243,15 @@ public class Galaxia {
                             if (ehBase) {
                                 broadcast(new EventoVitoria("SERVIDOR",
                                         "Estrela da Morte destruída por " + atacanteId + "!"));
+                                camel.publicarEvento("VITORIA", atacanteId,
+                                        "Estrela da Morte destruída", relogioLamport.getTempo());
                                 bases.remove("star_destroyer_1");
                             } else {
                                 enviarParaNave(alvo.getId(), new EventoDerrota("SERVIDOR",
                                         alvo.getId(), alvo.getId() + " foi destruído!"));
                                 broadcast(new EventoChatRecebido("SISTEMA",
                                         alvo.getId() + " foi destruído por " + atacanteId + "!"));
-                                removerNave(alvo.getId());
+                                removerNave(alvo.getId(), true);
                             }
                         } else if (!ehBase) {
                             enviarParaNave(alvo.getId(), new EventoDanoRecebido(
@@ -330,19 +334,25 @@ public class Galaxia {
         }
     }
 
-    public synchronized void removerNave(String naveId) {
+    public synchronized void removerNave(String naveId, boolean porCombate) {
         naves.remove(naveId);
         conexoes.remove(naveId);
         System.out.println("[SERVIDOR] Nave removida: " + naveId);
+        camel.publicarEvento("DESTRUICAO", naveId,
+                "Nave removida do universo", relogioLamport.getTempo());
         broadcast(new EventoNaveRemovida("SERVIDOR", naveId));
 
-        boolean aindaHaRebeldes = naves.values().stream()
-                .anyMatch(n -> n.getTipo() == TipoEntidade.NAVE_REBELDE
-                        && !n.getId().startsWith("Rebelde_AI_"));
+        if (porCombate) {
+            boolean aindaHaRebeldes = naves.values().stream()
+                    .anyMatch(n -> n.getTipo() == TipoEntidade.NAVE_REBELDE
+                            && !n.getId().startsWith("Rebelde_AI_"));
 
-        if (!aindaHaRebeldes && !naves.isEmpty()) {
-            broadcast(new EventoDerrota("SERVIDOR", "todos",
-                    "Todos os pilotos rebeldes foram destruídos! O Império venceu!"));
+            if (!aindaHaRebeldes && !naves.isEmpty()) {
+                broadcast(new EventoDerrota("SERVIDOR", "todos",
+                        "Todos os pilotos rebeldes foram destruídos! O Império venceu!"));
+                camel.publicarEvento("DERROTA", "todos",
+                        "Todos os rebeldes foram destruídos", relogioLamport.getTempo());
+            }
         }
     }
 
@@ -389,6 +399,8 @@ public class Galaxia {
             nave.setCombustivel(combustivel);
             nave.setVida(vida);
             enviarEstadoParaTodos();
+            camel.publicarEvento("REABASTECIMENTO", naveId,
+                    "Reabastecimento concluído", relogioLamport.getTempo());
         }
     }
 
@@ -399,6 +411,8 @@ public class Galaxia {
                 List.of(nave.getId())
         ));
         enviarEstadoParaTodos();
+        camel.publicarEvento("SPAWN_IA", nave.getId(),
+                "Nova nave imperial criada", relogioLamport.getTempo());
     }
 
     public void encerrar() {
@@ -413,7 +427,9 @@ public class Galaxia {
     }
 
     public static void main(String[] args) {
-        Galaxia servidor = new Galaxia();
+        CamelMonitoramento camel = new CamelMonitoramento();
+        camel.iniciar();
+        Galaxia servidor = new Galaxia(camel);
         servidor.iniciar();
     }
 }

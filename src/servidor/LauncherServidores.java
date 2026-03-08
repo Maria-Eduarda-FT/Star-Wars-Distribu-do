@@ -11,8 +11,11 @@ public class LauncherServidores {
         System.out.println("╚══════════════════════════════════════════════════╝");
         System.out.println();
 
+        CamelMonitoramento camel = new CamelMonitoramento();
+        camel.iniciar();
+
         Thread threadGalaxia = new Thread(() -> {
-            Galaxia galaxia = new Galaxia();
+            Galaxia galaxia = new Galaxia(camel);
             galaxia.iniciar();
         }, "Thread-Galaxia");
 
@@ -74,6 +77,11 @@ public class LauncherServidores {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("[LAUNCHER] Encerrando sistema...");
+            camel.parar();
+        }));
 
         try {
             threadGalaxia.join();

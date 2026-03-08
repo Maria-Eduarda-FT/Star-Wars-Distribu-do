@@ -25,7 +25,7 @@ public class nave {
     private boolean conectado;
     private Entidade estadoLocal;
     private volatile boolean aguardandoReabastecimento = false;
-    private Thread threadRecebimento;git int
+    private Thread threadRecebimento;
     private String baseReabastecimento;
     private volatile EstadoUniverso ultimoEstadoRecebido;
 
@@ -528,10 +528,6 @@ public class nave {
             logEventos.add("[R-A] REQUEST enviado (L" + meuTimestampRequest + ") para "
                     + totalNavesRebeldes + " naves");
 
-            // se não há outras naves rebeldes, entra direto
-            if (totalNavesRebeldes == 0) {
-                entrarSecaoCritica();
-            }
 
         } catch (IOException e) {
             System.err.println("[" + id + "] Erro ao solicitar reabastecimento: " + e.getMessage());

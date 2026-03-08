@@ -73,14 +73,13 @@ public class GerenciadorConexoes implements Runnable {
                 Object mensagem = in.readObject();
                 processarMensagem(mensagem);
             }
-
         } catch (EOFException e) {
-            System.out.println("[CONEXÃO] Cliente desconectou: " + naveId);
+            System.out.println("[SERVIDOR] Nave " + naveId + " encerrou conexão normalmente");
         } catch (IOException | ClassNotFoundException e) {
-            System.err.println("[CONEXÃO] Erro: " + e.getMessage());
-        } finally {
-            desconectar();
-        }
+            if (naveId != null) {
+                System.out.println("[SERVIDOR] Nave " + naveId + " perdeu conexão");
+            }
+        } finally { desconectar();}
     }
 
     private void processarMensagem(Object mensagem) {
@@ -161,10 +160,7 @@ public class GerenciadorConexoes implements Runnable {
         try {
             out.writeObject(msg);
             out.flush();
-        } catch (IOException e) {
-            System.err.println("[CONEXÃO] Erro ao enviar para " + naveId + ": " +
-                    e.getMessage());
-        }
+        } catch (IOException e) {}
     }
 
     public void enviarEstado(EstadoUniverso estado) {
@@ -173,14 +169,11 @@ public class GerenciadorConexoes implements Runnable {
 
     private void desconectar() {
         if (naveId != null) {
-            galaxia.removerNave(naveId);
+            galaxia.removerNave(naveId, false);
+            System.out.println("[SERVIDOR] Nave " + naveId + " desconectou");
         }
         try {
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null) socket.close();
-        } catch (IOException e) {
-            System.err.println("[CONEXÃO] Erro ao fechar: " + e.getMessage());
-        }
+            if (socket != null && !socket.isClosed()) socket.close();
+        } catch (IOException e) {}
     }
 }
