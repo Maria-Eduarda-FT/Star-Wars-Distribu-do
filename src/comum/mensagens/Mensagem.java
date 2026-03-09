@@ -5,7 +5,6 @@ import java.util.Map;
 
 public abstract class Mensagem implements Serializable {
 
-    private static final long serialVersionUID = 1L;
     protected final String remetente;
     protected final LocalDateTime timestamp;
     protected int timestampLamport;
